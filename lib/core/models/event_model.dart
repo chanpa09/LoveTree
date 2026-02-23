@@ -45,14 +45,37 @@ class EventModel {
 
   factory EventModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+
+    // date 필드: Timestamp 또는 String 가능
+    DateTime parsedDate;
+    final rawDate = data['date'];
+    if (rawDate is Timestamp) {
+      parsedDate = rawDate.toDate();
+    } else if (rawDate is String) {
+      parsedDate = DateTime.parse(rawDate);
+    } else {
+      parsedDate = DateTime.now();
+    }
+
+    // updated_at 필드: null 가능 (serverTimestamp 미반영)
+    DateTime parsedUpdatedAt;
+    final rawUpdated = data['updated_at'];
+    if (rawUpdated is Timestamp) {
+      parsedUpdatedAt = rawUpdated.toDate();
+    } else if (rawUpdated is String) {
+      parsedUpdatedAt = DateTime.parse(rawUpdated);
+    } else {
+      parsedUpdatedAt = DateTime.now();
+    }
+
     return EventModel(
       id: doc.id,
-      coupleId: data['couple_id'] as String,
-      title: data['title'] as String,
+      coupleId: data['couple_id'] as String? ?? '',
+      title: data['title'] as String? ?? '',
       description: data['description'] as String?,
-      date: (data['date'] as Timestamp).toDate(),
-      colorIndex: data['color_index'] as int,
-      updatedAt: (data['updated_at'] as Timestamp).toDate(),
+      date: parsedDate,
+      colorIndex: data['color_index'] as int? ?? 0,
+      updatedAt: parsedUpdatedAt,
     );
   }
 

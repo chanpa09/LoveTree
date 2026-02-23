@@ -1,0 +1,76 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── 공통 함수 ──
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuth() && request.auth.uid == userId;
+    }
+
+    // 커플 멤버인지 확인 (coupleId로 couples 문서 조회)
+    function isCoupleMemeber(coupleId) {
+      return isAuth()
+        && request.auth.uid in get(/databases/$(database)/documents/couples/$(coupleId)).data.user_ids;
+    }
+
+    // ── 사용자 문서: 본인만 접근 ──
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if false; // 삭제 불가
+    }
+
+    // ── 커플 문서: 멤버만 접근 ──
+    match /couples/{coupleId} {
+      allow read: if isAuth()
+        && request.auth.uid in resource.data.user_ids;
+      allow create: if isAuth()
+        && request.auth.uid in request.resource.data.user_ids;
+      allow update: if isAuth()
+        && request.auth.uid in resource.data.user_ids;
+      allow delete: if false;
+    }
+
+    // ── 이벤트: 해당 커플 멤버만 ──
+    match /events/{eventId} {
+      allow read: if isAuth() && isCoupleMemeber(resource.data.couple_id);
+      allow create: if isAuth() && isCoupleMemeber(request.resource.data.couple_id);
+      allow update: if isAuth() && isCoupleMemeber(resource.data.couple_id);
+      allow delete: if isAuth() && isCoupleMemeber(resource.data.couple_id);
+    }
+
+    // ── 댓글: 해당 이벤트의 커플 멤버만 ──
+    match /comments/{commentId} {
+      allow read: if isAuth();
+      allow create: if isAuth();
+      allow update: if isAuth() && request.auth.uid == resource.data.user_id;
+      allow delete: if isAuth() && request.auth.uid == resource.data.user_id;
+    }
+
+    // ── 초대 코드: 인증 사용자만, 생성자만 삭제 ──
+    match /codes/{codeId} {
+      allow read: if isAuth();
+      allow create: if isAuth();
+      allow delete: if isAuth();
+      allow update: if false; // 코드 수정 불가
+    }
+
+    // ── 투두: 해당 커플 멤버만 ──
+    match /todos/{todoId} {
+      allow read: if isAuth() && isCoupleMemeber(resource.data.couple_id);
+      allow create: if isAuth() && isCoupleMemeber(request.resource.data.couple_id);
+      allow update: if isAuth() && isCoupleMemeber(resource.data.couple_id);
+      allow delete: if isAuth() && isCoupleMemeber(resource.data.couple_id);
+    }
+
+    // ── 나머지 문서: 모두 거부 ──
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

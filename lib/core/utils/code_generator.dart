@@ -1,9 +1,10 @@
 import 'dart:math';
 
 class CodeGenerator {
-  /// 6자리 숫자로 된 랜덤 초대 코드를 생성합니다.
+  /// 8자리 영숫자 초대 코드 (보안 난수 사용, O/0/I/1 제외)
   static String generateInviteCode() {
-    final random = Random();
-    return (random.nextInt(900000) + 100000).toString();
+    final random = Random.secure();
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    return List.generate(8, (_) => chars[random.nextInt(chars.length)]).join();
   }
 }

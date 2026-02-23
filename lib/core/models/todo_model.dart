@@ -25,6 +25,22 @@ class TodoModel {
     };
   }
 
+  TodoModel copyWith({
+    String? id,
+    String? coupleId,
+    String? task,
+    bool? isDone,
+    DateTime? updatedAt,
+  }) {
+    return TodoModel(
+      id: id ?? this.id,
+      coupleId: coupleId ?? this.coupleId,
+      task: task ?? this.task,
+      isDone: isDone ?? this.isDone,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
   factory TodoModel.fromMap(Map<String, dynamic> map) {
     return TodoModel(
       id: map['id'] as String,

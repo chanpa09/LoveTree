@@ -1,6 +1,8 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'dart:io' show Platform;
+import '../../config/secrets.dart';
 
 class AdBannerWidget extends StatefulWidget {
   const AdBannerWidget({super.key});
@@ -14,14 +16,21 @@ class _AdBannerWidgetState extends State<AdBannerWidget> {
   bool _isLoaded = false;
 
   // AdMob 테스트 ID (Android/iOS)
-  final String _adUnitId = Platform.isAndroid
-      ? 'ca-app-pub-3940256099942544/6300978111'
-      : 'ca-app-pub-3940256099942544/2934735716';
+  String get _adUnitId {
+    if (kIsWeb) return ''; // 웹에서는 광고 생략
+    if (Platform.isAndroid) {
+      return Secrets.adMobAndroidBannerId;
+    } else {
+      return Secrets.adMobIosBannerId;
+    }
+  }
 
   @override
   void initState() {
     super.initState();
-    _loadAd();
+    if (!kIsWeb) {
+      _loadAd();
+    }
   }
 
   void _loadAd() {
@@ -50,7 +59,7 @@ class _AdBannerWidgetState extends State<AdBannerWidget> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_isLoaded || _bannerAd == null) {
+    if (kIsWeb || !_isLoaded || _bannerAd == null) {
       return const SizedBox.shrink();
     }
     return Container(

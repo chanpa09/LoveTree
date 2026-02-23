@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/models/event_model.dart';
+import '../../../../core/theme/app_theme.dart';
 
 class AddEventSheet extends StatefulWidget {
   final DateTime selectedDay;
@@ -17,127 +18,284 @@ class AddEventSheet extends StatefulWidget {
   State<AddEventSheet> createState() => _AddEventSheetState();
 }
 
-class _AddEventSheetState extends State<AddEventSheet> {
+class _AddEventSheetState extends State<AddEventSheet>
+    with SingleTickerProviderStateMixin {
   final _titleController = TextEditingController();
   final _descController = TextEditingController();
   int _selectedColorIndex = 0;
 
-  final List<Color> _colors = [
-    Colors.blue,
-    Colors.green,
-    Colors.orange,
-    Colors.red,
-    Colors.purple,
-  ];
+  late AnimationController _animController;
+  late Animation<double> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(
+      duration: const Duration(milliseconds: 400),
+      vsync: this,
+    );
+    _slideAnimation = CurvedAnimation(
+      parent: _animController,
+      curve: Curves.easeOutCubic,
+    );
+    _animController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    _titleController.dispose();
+    _descController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-      ),
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom + 30,
-        left: 30,
-        right: 30,
-        top: 30,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                '새로운 일정 🌸',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF4A4A4A)),
-              ),
-              IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return SlideTransition(
+      position: Tween<Offset>(
+        begin: const Offset(0, 0.1),
+        end: Offset.zero,
+      ).animate(_slideAnimation),
+      child: FadeTransition(
+        opacity: _slideAnimation,
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppTheme.darkCard : Colors.white,
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(28)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 20,
+                offset: const Offset(0, -5),
               ),
             ],
           ),
-          const SizedBox(height: 30),
-          TextField(
-            controller: _titleController,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-            decoration: InputDecoration(
-              labelText: '어떤 일정인가요?',
-              labelStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
-              hintText: '예: 우리의 첫 캠핑, 맛집 탐방 등',
-              hintStyle: TextStyle(color: Colors.grey.shade300, fontWeight: FontWeight.normal),
-            ),
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom + 30,
+            left: 28,
+            right: 28,
+            top: 16,
           ),
-          const SizedBox(height: 20),
-          TextField(
-            controller: _descController,
-            decoration: InputDecoration(
-              labelText: '상세를 남겨주세요 (선택)',
-              labelStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
-            ),
-          ),
-          const SizedBox(height: 30),
-          const Text(
-            '포인트 색상',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF4A4A4A)),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 50,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: _colors.length,
-              itemBuilder: (context, index) {
-                final isSelected = _selectedColorIndex == index;
-                return GestureDetector(
-                  onTap: () => setState(() => _selectedColorIndex = index),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.only(right: 15),
-                    width: isSelected ? 48 : 40,
-                    height: isSelected ? 48 : 40,
-                    decoration: BoxDecoration(
-                      color: _colors[index],
-                      shape: BoxShape.circle,
-                      boxShadow: isSelected
-                          ? [
-                              BoxShadow(
-                                color: _colors[index].withOpacity(0.4),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ]
-                          : null,
-                      border: isSelected ? Border.all(color: Colors.white, width: 3) : null,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 드래그 핸들
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white24 : Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // 헤더
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      ShaderMask(
+                        shaderCallback: (bounds) =>
+                            AppTheme.primaryGradient.createShader(bounds),
+                        child: const Icon(Icons.add_circle,
+                            color: Colors.white, size: 28),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        '새로운 일정',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: isDark
+                              ? AppTheme.darkTextPrimary
+                              : AppTheme.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusS),
+                      onTap: () => Navigator.pop(context),
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Icon(Icons.close_rounded,
+                            color: AppTheme.textHint),
+                      ),
                     ),
                   ),
-                );
-              },
-            ),
+                ],
+              ),
+              const SizedBox(height: 28),
+
+              // 제목 입력
+              TextField(
+                controller: _titleController,
+                maxLength: 50,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: isDark
+                      ? AppTheme.darkTextPrimary
+                      : AppTheme.textPrimary,
+                ),
+                decoration: InputDecoration(
+                  labelText: '어떤 일정인가요?',
+                  labelStyle: TextStyle(color: AppTheme.textHint, fontSize: 14),
+                  hintText: '예: 우리의 첫 캠핑, 맛집 탐방 등',
+                  hintStyle: TextStyle(
+                      color: AppTheme.textHint.withOpacity(0.5),
+                      fontWeight: FontWeight.normal),
+                  prefixIcon: Icon(Icons.edit_rounded,
+                      color: AppTheme.primary, size: 20),
+                  counterStyle: TextStyle(color: AppTheme.textHint, fontSize: 11),
+                ),
+                autofocus: true,
+              ),
+              const SizedBox(height: 18),
+
+              // 설명 입력
+              TextField(
+                controller: _descController,
+                maxLength: 500,
+                maxLines: 3,
+                minLines: 1,
+                style: TextStyle(
+                  color: isDark
+                      ? AppTheme.darkTextPrimary
+                      : AppTheme.textPrimary,
+                ),
+                decoration: InputDecoration(
+                  labelText: '상세를 남겨주세요 (선택)',
+                  labelStyle: TextStyle(color: AppTheme.textHint, fontSize: 14),
+                  prefixIcon: Icon(Icons.notes_rounded,
+                      color: AppTheme.textHint, size: 20),
+                  counterStyle: TextStyle(color: AppTheme.textHint, fontSize: 11),
+                ),
+              ),
+              const SizedBox(height: 28),
+
+              // 색상 선택
+              Text(
+                '포인트 색상',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: isDark
+                      ? AppTheme.darkTextPrimary
+                      : AppTheme.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                height: 52,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: AppTheme.eventColors.length,
+                  itemBuilder: (context, index) {
+                    final isSelected = _selectedColorIndex == index;
+                    return GestureDetector(
+                      onTap: () =>
+                          setState(() => _selectedColorIndex = index),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeOutCubic,
+                        margin: const EdgeInsets.only(right: 12),
+                        width: isSelected ? 48 : 40,
+                        height: isSelected ? 48 : 40,
+                        decoration: BoxDecoration(
+                          color: AppTheme.eventColors[index],
+                          shape: BoxShape.circle,
+                          boxShadow: isSelected
+                              ? [
+                                  BoxShadow(
+                                    color: AppTheme.eventColors[index]
+                                        .withOpacity(0.4),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ]
+                              : null,
+                          border: isSelected
+                              ? Border.all(
+                                  color: isDark
+                                      ? Colors.white
+                                      : Colors.white,
+                                  width: 3)
+                              : null,
+                        ),
+                        child: isSelected
+                            ? const Icon(Icons.check_rounded,
+                                color: Colors.white, size: 22)
+                            : null,
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 32),
+
+              // 저장 버튼
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusL),
+                  gradient: AppTheme.primaryGradient,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.primary.withOpacity(0.3),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: ElevatedButton(
+                  onPressed: () {
+                    final title = _titleController.text.trim()
+                        .replaceAll(RegExp(r'<[^>]*>'), ''); // HTML 태그 제거
+                    final desc = _descController.text.trim()
+                        .replaceAll(RegExp(r'<[^>]*>'), '');
+
+                    if (title.isEmpty) return;
+
+                    final event = EventModel(
+                      id: '',
+                      coupleId: widget.coupleId,
+                      title: title,
+                      description: desc.isEmpty ? null : desc,
+                      date: widget.selectedDay,
+                      colorIndex: _selectedColorIndex,
+                      updatedAt: DateTime.now(),
+                    );
+                    widget.onSave(event);
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    elevation: 0,
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.check_rounded, size: 20),
+                      SizedBox(width: 8),
+                      Text('반영하기'),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 40),
-          ElevatedButton(
-            onPressed: () {
-              if (_titleController.text.isEmpty) return;
-              
-              final event = EventModel(
-                id: '', // 리포지토리에서 생성
-                coupleId: widget.coupleId,
-                title: _titleController.text,
-                description: _descController.text,
-                date: widget.selectedDay,
-                colorIndex: _selectedColorIndex,
-                updatedAt: DateTime.now(),
-              );
-              widget.onSave(event);
-              Navigator.pop(context);
-            },
-            child: const Text('반영하기'),
-          ),
-        ],
+        ),
       ),
     );
   }

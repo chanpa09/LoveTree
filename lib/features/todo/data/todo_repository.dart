@@ -28,7 +28,7 @@ class TodoRepository {
     }
   }
 
-  /// 새로운 할 일 생성
+  /// 새로운 할 일 생성 (낙관적 업데이트)
   Future<void> addTodo(String coupleId, String task) async {
     final docRef = _firestore.collection('todos').doc();
     final todo = TodoModel(
@@ -39,22 +39,34 @@ class TodoRepository {
       updatedAt: DateTime.now(),
     );
 
-    await docRef.set(todo.toFirestore());
-    await syncTodos(coupleId);
+    // 1. 로컬(캐시/DB)에 즉시 반영
+    await _dbHelper.insertTodo(todo);
+
+    // 2. 서버 전송을 백그라운드에서 진행
+    docRef.set(todo.toFirestore());
   }
 
-  /// 할 일 상태 토글 (서버와 로컬 동시 반영)
+  /// 할 일 상태 토글 (낙관적 업데이트)
   Future<void> toggleTodo(TodoModel todo) async {
     final newStatus = !todo.isDone;
-    // 1. 서버 업데이트
-    await _firestore.collection('todos').doc(todo.id).update({
+    
+    // 1. 서버 응답을 기다리지 않고 로컬 상태부터 즉시 업데이트
+    await _dbHelper.updateTodoStatus(todo.id, newStatus);
+    
+    // 2. 서버 업데이트 (백그라운드)
+    _firestore.collection('todos').doc(todo.id).update({
       'is_done': newStatus,
       'updated_at': FieldValue.serverTimestamp(),
     });
-    
-    // 2. 로컬 업데이트 및 최신 상태 동기화
-    await _dbHelper.updateTodoStatus(todo.id, newStatus);
-    await syncTodos(todo.coupleId);
+  }
+
+  /// 할 일 삭제 (낙관적 업데이트)
+  Future<void> deleteTodo(TodoModel todo) async {
+    // 1. 로컬 DB에서 즉시 삭제
+    await _dbHelper.deleteTodo(todo.id);
+
+    // 2. Firestore에서 삭제 (백그라운드)
+    _firestore.collection('todos').doc(todo.id).delete();
   }
 
   /// 로컬 DB에서 할 일 목록 조회
