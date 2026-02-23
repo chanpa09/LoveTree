@@ -4,6 +4,8 @@ import 'package:table_calendar/table_calendar.dart';
 import '../../../core/models/event_model.dart';
 import '../data/calendar_repository.dart';
 import 'widgets/add_event_sheet.dart';
+import '../../todo/presentation/todo_list_widget.dart';
+import 'event_detail_screen.dart';
 
 class CalendarScreen extends ConsumerStatefulWidget {
   final String coupleId;
@@ -93,6 +95,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             ),
           ),
           const Divider(),
+          TodoListWidget(coupleId: widget.coupleId),
+          const Divider(),
           Expanded(
             child: _buildEventList(),
           ),
@@ -115,6 +119,14 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       itemBuilder: (context, index) {
         final event = events[index];
         return ListTile(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => EventDetailScreen(event: event),
+              ),
+            );
+          },
           leading: CircleAvatar(
             backgroundColor: _getColor(event.colorIndex),
           ),

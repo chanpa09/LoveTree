@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../../core/models/event_model.dart';
+import '../../core/models/todo_model.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
@@ -82,8 +83,35 @@ class DatabaseHelper {
     return null;
   }
 
-  Future<int> deleteEvent(String id) async {
+  // Todos CRUD
+  Future<int> insertTodo(TodoModel todo) async {
     final db = await database;
-    return await db.delete('events', where: 'id = ?', whereArgs: [id]);
+    return await db.insert('todos', todo.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<List<TodoModel>> getTodos(String coupleId) async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'todos',
+      where: 'couple_id = ?',
+      whereArgs: [coupleId],
+      orderBy: 'updated_at DESC',
+    );
+    return List.generate(maps.length, (i) => TodoModel.fromMap(maps[i]));
+  }
+
+  Future<int> updateTodoStatus(String id, bool isDone) async {
+    final db = await database;
+    return await db.update(
+      'todos',
+      {'is_done': isDone ? 1 : 0, 'updated_at': DateTime.now().toIso8601String()},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<int> deleteTodo(String id) async {
+    final db = await database;
+    return await db.delete('todos', where: 'id = ?', whereArgs: [id]);
   }
 }
