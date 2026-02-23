@@ -6,6 +6,7 @@ import '../data/calendar_repository.dart';
 import 'widgets/add_event_sheet.dart';
 import '../../todo/presentation/todo_list_widget.dart';
 import 'event_detail_screen.dart';
+import '../../../core/widgets/ad_banner_widget.dart';
 
 class CalendarScreen extends ConsumerStatefulWidget {
   final String coupleId;
@@ -69,37 +70,52 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       ),
       body: Column(
         children: [
-          TableCalendar(
-            firstDay: DateTime.utc(2020, 1, 1),
-            lastDay: DateTime.utc(2030, 12, 31),
-            focusedDay: _focusedDay,
-            calendarFormat: _calendarFormat,
-            selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-            onDaySelected: (selectedDay, focusedDay) {
-              setState(() {
-                _selectedDay = selectedDay;
-                _focusedDay = focusedDay;
-              });
-            },
-            onFormatChanged: (format) {
-              setState(() {
-                _calendarFormat = format;
-              });
-            },
-            eventLoader: _getEventsForDay,
-            calendarStyle: const CalendarStyle(
-              markerDecoration: BoxDecoration(
-                color: Colors.pinkAccent,
-                shape: BoxShape.circle,
-              ),
+          Expanded(
+            child: Column(
+              children: [
+                TableCalendar(
+                  firstDay: DateTime.utc(2020, 1, 1),
+                  lastDay: DateTime.utc(2030, 12, 31),
+                  focusedDay: _focusedDay,
+                  calendarFormat: _calendarFormat,
+                  selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+                  onDaySelected: (selectedDay, focusedDay) {
+                    setState(() {
+                      _selectedDay = selectedDay;
+                      _focusedDay = focusedDay;
+                    });
+                  },
+                  onFormatChanged: (format) {
+                    setState(() {
+                      _calendarFormat = format;
+                    });
+                  },
+                  eventLoader: _getEventsForDay,
+                  calendarStyle: const CalendarStyle(
+                    markerDecoration: BoxDecoration(
+                      color: Color(0xFFFF85A1),
+                      shape: BoxShape.circle,
+                    ),
+                    todayDecoration: BoxDecoration(
+                      color: Color(0xFFFFB3C1),
+                      shape: BoxShape.circle,
+                    ),
+                    selectedDecoration: BoxDecoration(
+                      color: Color(0xFFFF85A1),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+                const Divider(height: 1),
+                TodoListWidget(coupleId: widget.coupleId),
+                const Divider(height: 1),
+                Expanded(
+                  child: _buildEventList(),
+                ),
+              ],
             ),
           ),
-          const Divider(),
-          TodoListWidget(coupleId: widget.coupleId),
-          const Divider(),
-          Expanded(
-            child: _buildEventList(),
-          ),
+          const AdBannerWidget(),
         ],
       ),
       floatingActionButton: FloatingActionButton(

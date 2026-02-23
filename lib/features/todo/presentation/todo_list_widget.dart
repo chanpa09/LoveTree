@@ -46,72 +46,104 @@ class _TodoListWidgetState extends ConsumerState<TodoListWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                '공동 할 일',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              IconButton(
-                icon: const Icon(Icons.add_circle, color: Colors.pinkAccent),
-                onPressed: () => _showAddTodoDialog(),
-              ),
-            ],
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  '부부 공동 할 일',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF4A4A4A)),
+                ),
+                GestureDetector(
+                  onTap: _showAddTodoDialog,
+                  child: const Icon(Icons.add_circle, color: Color(0xFFFF85A1), size: 28),
+                ),
+              ],
+            ),
           ),
-        ),
-        SizedBox(
-          height: 100,
-          child: _todos.isEmpty
-              ? const Center(child: Text('오늘 할 일이 없습니다.'))
-              : ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  itemCount: _todos.length,
-                  itemBuilder: (context, index) {
-                    final todo = _todos[index];
-                    return Card(
-                      color: todo.isDone ? Colors.grey.shade200 : Colors.white,
-                      child: InkWell(
-                        onTap: () async {
-                          await ref.read(todoRepositoryProvider).toggleTodo(todo);
-                          _refreshTodos();
-                        },
-                        child: Container(
-                          width: 140,
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                todo.task,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  decoration: todo.isDone ? TextDecoration.lineThrough : null,
-                                  fontWeight: FontWeight.w500,
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 110,
+            child: _todos.isEmpty
+                ? Center(
+                    child: Text(
+                      '오늘 할 일을 추가해보세요 ✍️',
+                      style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+                    ),
+                  )
+                : ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: _todos.length,
+                    itemBuilder: (context, index) {
+                      final todo = _todos[index];
+                      return Container(
+                        width: 160,
+                        margin: const EdgeInsets.only(right: 12),
+                        decoration: BoxDecoration(
+                          color: todo.isDone ? Colors.grey.shade100 : Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: todo.isDone
+                              ? null
+                              : [
+                                  BoxShadow(
+                                    color: Colors.pink.withOpacity(0.03),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                          border: todo.isDone ? null : Border.all(color: const Color(0xFFFFE5EC), width: 1),
+                        ),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(20),
+                          onTap: () async {
+                            await ref.read(todoRepositoryProvider).toggleTodo(todo);
+                            _refreshTodos();
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  todo.task,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    decoration: todo.isDone ? TextDecoration.lineThrough : null,
+                                    color: todo.isDone ? Colors.grey : const Color(0xFF4A4A4A),
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                  ),
                                 ),
-                              ),
-                              Icon(
-                                todo.isDone ? Icons.check_circle : Icons.radio_button_unchecked,
-                                color: todo.isDone ? Colors.green : Colors.grey,
-                                size: 18,
-                              ),
-                            ],
+                                Align(
+                                  alignment: Alignment.bottomRight,
+                                  child: Icon(
+                                    todo.isDone ? Icons.check_circle : Icons.radio_button_unchecked,
+                                    color: todo.isDone ? Colors.green.shade300 : const Color(0xFFFFC2D1),
+                                    size: 22,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-        ),
-      ],
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
     );
   }
 

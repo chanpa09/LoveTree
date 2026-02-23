@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/auth_repository.dart';
 import '../../calendar/presentation/calendar_screen.dart';
 import '../../../core/models/models.dart';
+import '../../../core/widgets/ad_banner_widget.dart';
 
 class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
@@ -85,81 +86,113 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('LoveTree 시작하기')),
-      body: _isLoading && _currentUser == null
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text(
-                    '상대방과 연결하여\n우리만의 달력을 만들어보세요',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 40),
-                  if (_myInviteCode == null)
-                    ElevatedButton(
-                      onPressed: _isLoading ? null : _generateCode,
-                      child: const Text('내 초대 코드 생성하기'),
-                    )
-                  else
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.pink.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        children: [
-                          const Text('상대방에게 이 코드를 알려주세요'),
-                          const SizedBox(height: 8),
-                          Text(
-                            _myInviteCode!,
-                            style: const TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.pink,
-                              letterSpacing: 4,
+      appBar: AppBar(title: const Text('우리의 연결')),
+      body: Column(
+        children: [
+          Expanded(
+            child: _isLoading && _currentUser == null
+                ? const Center(child: CircularProgressIndicator())
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 40),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.favorite, size: 80, color: Color(0xFFFF85A1)),
+                        const SizedBox(height: 24),
+                        const Text(
+                          '서로 연결하여\n아름다운 기록을 시작하세요',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF4A4A4A),
+                            height: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: 50),
+                        if (_myInviteCode == null)
+                          ElevatedButton(
+                            onPressed: _isLoading ? null : _generateCode,
+                            child: const Text('내 초대 코드 생성하기'),
+                          )
+                        else
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(24),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.pink.withOpacity(0.05),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 10),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              children: [
+                                const Text(
+                                  '상대방에게 이 코드를 보내주세요',
+                                  style: TextStyle(color: Colors.grey, fontSize: 13),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  _myInviteCode!,
+                                  style: const TextStyle(
+                                    fontSize: 36,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFFFF85A1),
+                                    letterSpacing: 8,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
+                        const SizedBox(height: 48),
+                        const Row(
+                          children: [
+                            Expanded(child: Divider()),
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 16),
+                              child: Text('또는', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                            ),
+                            Expanded(child: Divider()),
+                          ],
+                        ),
+                        const SizedBox(height: 40),
+                        TextField(
+                          controller: _codeController,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 4),
+                          decoration: const InputDecoration(
+                            hintText: '상대방 코드 6자리',
+                            hintStyle: TextStyle(letterSpacing: 0, fontSize: 15, fontWeight: FontWeight.normal),
+                          ),
+                          keyboardType: TextInputType.number,
+                          maxLength: 6,
+                        ),
+                        const SizedBox(height: 20),
+                        ElevatedButton(
+                          onPressed: _isLoading ? null : _connect,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFFFB3C1),
+                          ),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                )
+                              : const Text('연결하기'),
+                        ),
+                      ],
                     ),
-                  const SizedBox(height: 40),
-                  const Divider(),
-                  const SizedBox(height: 20),
-                  TextField(
-                    controller: _codeController,
-                    decoration: const InputDecoration(
-                      labelText: '상대방 코드 입력 (6자리)',
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.number,
-                    maxLength: 6,
                   ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _connect,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.pinkAccent,
-                        foregroundColor: Colors.white,
-                      ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                            )
-                          : const Text('연결하기'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          ),
+          const AdBannerWidget(),
+        ],
+      ),
     );
   }
 }

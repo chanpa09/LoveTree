@@ -32,90 +32,111 @@ class _AddEventSheetState extends State<AddEventSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
       padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-        left: 20,
-        right: 20,
-        top: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 30,
+        left: 30,
+        right: 30,
+        top: 30,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '새 일정 추가',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                '새로운 일정 🌸',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF4A4A4A)),
+              ),
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.close),
+              ),
+            ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 30),
           TextField(
             controller: _titleController,
-            decoration: const InputDecoration(
-              labelText: '일정 제목',
-              hintText: '예: 마트 장보기, 병원 예약 등',
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _descController,
-            decoration: const InputDecoration(
-              labelText: '상세 설명 (선택)',
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            decoration: InputDecoration(
+              labelText: '어떤 일정인가요?',
+              labelStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+              hintText: '예: 우리의 첫 캠핑, 맛집 탐방 등',
+              hintStyle: TextStyle(color: Colors.grey.shade300, fontWeight: FontWeight.normal),
             ),
           ),
           const SizedBox(height: 20),
-          const Text('색상 선택'),
-          const SizedBox(height: 10),
+          TextField(
+            controller: _descController,
+            decoration: InputDecoration(
+              labelText: '상세를 남겨주세요 (선택)',
+              labelStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+            ),
+          ),
+          const SizedBox(height: 30),
+          const Text(
+            '포인트 색상',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF4A4A4A)),
+          ),
+          const SizedBox(height: 16),
           SizedBox(
             height: 50,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: _colors.length,
               itemBuilder: (context, index) {
+                final isSelected = _selectedColorIndex == index;
                 return GestureDetector(
                   onTap: () => setState(() => _selectedColorIndex = index),
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 5),
-                    width: 40,
-                    height: 40,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin: const EdgeInsets.only(right: 15),
+                    width: isSelected ? 48 : 40,
+                    height: isSelected ? 48 : 40,
                     decoration: BoxDecoration(
                       color: _colors[index],
                       shape: BoxShape.circle,
-                      border: _selectedColorIndex == index
-                          ? Border.all(color: Colors.black, width: 2)
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: _colors[index].withOpacity(0.4),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ]
                           : null,
+                      border: isSelected ? Border.all(color: Colors.white, width: 3) : null,
                     ),
                   ),
                 );
               },
             ),
           ),
-          const SizedBox(height: 30),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                if (_titleController.text.isEmpty) return;
-                
-                final event = EventModel(
-                  id: '', // 리포지토리에서 생성
-                  coupleId: widget.coupleId,
-                  title: _titleController.text,
-                  description: _descController.text,
-                  date: widget.selectedDay,
-                  colorIndex: _selectedColorIndex,
-                  updatedAt: DateTime.now(),
-                );
-                widget.onSave(event);
-                Navigator.pop(context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.pinkAccent,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('저장하기'),
-            ),
+          const SizedBox(height: 40),
+          ElevatedButton(
+            onPressed: () {
+              if (_titleController.text.isEmpty) return;
+              
+              final event = EventModel(
+                id: '', // 리포지토리에서 생성
+                coupleId: widget.coupleId,
+                title: _titleController.text,
+                description: _descController.text,
+                date: widget.selectedDay,
+                colorIndex: _selectedColorIndex,
+                updatedAt: DateTime.now(),
+              );
+              widget.onSave(event);
+              Navigator.pop(context);
+            },
+            child: const Text('반영하기'),
           ),
-          const SizedBox(height: 20),
         ],
       ),
     );
