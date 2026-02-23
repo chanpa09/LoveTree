@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "25289321753",
+    "project_id": "lovetree-99e0a",
+    "storage_bucket": "lovetree-99e0a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:25289321753:android:182998a9e12443088a2988",
+        "android_client_info": {
+          "package_name": "com.chanpa09.lovetree"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyABaSGh-hlFADPqLH5EQBLQMknj7_rq488"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
