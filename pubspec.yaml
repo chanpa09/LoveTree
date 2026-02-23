@@ -1,0 +1,40 @@
+name: lovetree
+description: A new Flutter project for couples.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.2
+  
+  # Firebase
+  firebase_core: ^2.15.0
+  firebase_auth: ^4.7.2
+  cloud_firestore: ^4.8.3
+  firebase_messaging: ^14.6.6
+  
+  # Local DB & Storage
+  sqflite: ^2.3.0
+  path: ^1.8.3
+  shared_preferences: ^2.2.0
+
+  # State Management & Utils
+  flutter_riverpod: ^2.3.6
+  intl: ^0.18.1
+  uuid: ^3.0.7
+  
+  # UI & Calendar
+  table_calendar: ^3.0.9
+  google_mobile_ads: ^3.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true
