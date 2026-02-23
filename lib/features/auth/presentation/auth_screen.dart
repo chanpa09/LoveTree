@@ -7,6 +7,8 @@ import '../../../core/models/models.dart';
 import '../../../core/widgets/ad_banner_widget.dart';
 import '../../../core/theme/app_theme.dart';
 
+/// 앱의 진입점이자 사용자 인증 및 커플 연결을 담당하는 메인 스크린입니다.
+/// 하트 맥박 애니메이션, 초대 코드 생성, 코드 입력 및 파트너 연결 로직을 포함합니다.
 class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
 
@@ -16,13 +18,19 @@ class AuthScreen extends ConsumerStatefulWidget {
 
 class _AuthScreenState extends ConsumerState<AuthScreen>
     with TickerProviderStateMixin {
+  /// 파트너의 초대 코드를 입력받는 컨트롤러
   final TextEditingController _codeController = TextEditingController();
+  /// 현재 익명 로그인된 사용자 정보
   UserModel? _currentUser;
+  /// 내가 생성한 파트너 초대 코드
   String? _myInviteCode;
+  /// 데이터 로딩 상태 (API 요청 중 등)
   bool _isLoading = false;
 
-  // 애니메이션 컨트롤러
+  // ── 애니메이션 설정 ──
+  /// 화면 진입 시 부드럽게 나타나는 페이드 애니메이션
   late AnimationController _fadeController;
+  /// 메인 하트 아이콘이 두근거리는 맥박 애니메이션
   late AnimationController _heartController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _heartScale;
@@ -31,7 +39,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
   void initState() {
     super.initState();
 
-    // 진입 페이드 애니메이션
+    // 진입 페이드 애니메이션 설정 (1.2초 동안 부드럽게)
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 1200),
       vsync: this,
@@ -41,7 +49,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
       curve: Curves.easeOutCubic,
     );
 
-    // 하트 맥박 애니메이션
+    // 하트 맥박 애니메이션 설정 (끊임없이 반복)
     _heartController = AnimationController(
       duration: const Duration(milliseconds: 1400),
       vsync: this,
@@ -55,6 +63,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     _heartController.repeat(reverse: true);
 
     _fadeController.forward();
+    
+    // 화면 진입 시 자동으로 익명 로그인 수행
     _preSignIn();
   }
 
@@ -66,6 +76,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     super.dispose();
   }
 
+  /// 앱 진입 시 초기 익명 로그인을 시도합니다.
+  /// 만약 이미 커플 ID가 연결된 사용자라면 바로 캘린더 화면으로 이동합니다.
   void _preSignIn() async {
     setState(() => _isLoading = true);
     final repo = ref.read(authRepositoryProvider);
@@ -81,7 +93,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
         _isLoading = false;
       });
 
-      // 이미 커플에 연결되어 있다면 바로 이동
+      // 이미 커플에 연결되어 있다면 메인 화면으로 자동 진입 (자동 로그인 처리)
       if (user?.coupleId != null) {
         _navigateToCalendar(user!.coupleId!);
       }
@@ -90,6 +102,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     }
   }
 
+  /// 파트너에게 보여줄 8자리 보안 초대 코드를 생성합니다.
   void _generateCode() async {
     if (_currentUser == null) return;
     setState(() => _isLoading = true);
@@ -101,10 +114,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     });
   }
 
+  /// 파트너 초대 과정 없이 혼자서 앱을 시작합니다 (솔로 모드).
   void _startSolo() async {
     setState(() => _isLoading = true);
     try {
-      // 아직 로그인이 안 되어 있으면 먼저 로그인 시도
+      // 로그인이 아직 안 된 경우 로그인부터 수행
       if (_currentUser == null) {
         final repo = ref.read(authRepositoryProvider);
         final user = await repo.signInAnonymously();
@@ -112,8 +126,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
         if (user == null) {
           setState(() => _isLoading = false);
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('로그인에 실패했습니다. 다시 시도해주세요.'),
+            const SnackBar(
+              content: Text('로그인에 실패했습니다. 다시 시도해주세요.'),
               backgroundColor: Colors.redAccent,
             ),
           );
@@ -138,6 +152,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     }
   }
 
+  /// 생성된 초대 코드를 클릭 시 클립보드에 복사합니다.
   void _copyCode() {
     if (_myInviteCode == null) return;
     Clipboard.setData(ClipboardData(text: _myInviteCode!));
@@ -158,14 +173,17 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     }
   }
 
+  /// 파트너가 알려준 코드를 입력하여 두 계정을 하나로 연결합니다.
   void _connect() async {
-    if (_currentUser == null || _codeController.text.length != 6) return;
+    // 8자리 코드가 맞는지 먼저 확인 (보안 강화 후 8자리로 변경됨)
+    if (_currentUser == null || _codeController.text.length != 8) return;
     setState(() => _isLoading = true);
     final repo = ref.read(authRepositoryProvider);
     final success = await repo.connectWithCode(
         _currentUser!.uid, _codeController.text);
 
     if (success) {
+      // 연결 성공 시 최신 사용자 정보를 가져와 화면 전환
       final updatedUser = await repo.signInAnonymously();
       if (updatedUser?.coupleId != null) {
         _navigateToCalendar(updatedUser!.coupleId!);
@@ -174,12 +192,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
+          const SnackBar(
+            content: Row(
               children: [
                 Icon(Icons.error_outline, color: Colors.white, size: 20),
                 SizedBox(width: 8),
-                Text('잘못된 코드이거나 연결에 실패했습니다.'),
+                Text('잘못된 코드이거나 이미 만료된 코드입니다.'),
               ],
             ),
             backgroundColor: Colors.redAccent,
@@ -189,6 +207,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     }
   }
 
+  /// 캘린더 화면으로 이동하며 공통 커스터 애니메이션을 적용합니다.
   void _navigateToCalendar(String coupleId) {
     if (mounted) {
       Navigator.pushReplacement(
@@ -222,7 +241,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            SizedBox(
+                            const SizedBox(
                               width: 48,
                               height: 48,
                               child: CircularProgressIndicator(
@@ -231,7 +250,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                               ),
                             ),
                             const SizedBox(height: 16),
-                            Text(
+                            const Text(
                               '연결 준비 중...',
                               style: TextStyle(
                                 color: AppTheme.textHint,
@@ -249,7 +268,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              // ── 펄싱 하트 아이콘 ──
+                              // ── 두근거리는 하트 위젯 ──
                               ScaleTransition(
                                 scale: _heartScale,
                                 child: Container(
@@ -294,7 +313,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                               ),
                               const SizedBox(height: 36),
 
-                              // ── 메인 타이틀 ──
+                              // ── 감성적인 환영 메시지 ──
                               Text(
                                 '서로 연결하여',
                                 textAlign: TextAlign.center,
@@ -324,7 +343,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                               ),
                               const SizedBox(height: 48),
 
-                              // ── 초대 코드 생성 / 표시 ──
+                              // ── 내 코드 생성 영역 ──
                               if (_myInviteCode == null)
                                 _buildGenerateButton()
                               else
@@ -332,7 +351,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
 
                               const SizedBox(height: 40),
 
-                              // ── 구분선 ──
+                              // ── 구분선 영역 ──
                               Row(
                                 children: [
                                   Expanded(
@@ -341,8 +360,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                                               ? Colors.white12
                                               : const Color(0xFFEBEBEB),
                                           thickness: 1)),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(
+                                  const Padding(
+                                    padding: EdgeInsets.symmetric(
                                         horizontal: 16),
                                     child: Text(
                                       '또는 코드로 연결',
@@ -363,15 +382,14 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                               ),
                               const SizedBox(height: 32),
 
-                              // ── 코드 입력 필드 ──
+                              // ── 파트너 코드 입력 인터페이스 ──
                               _buildCodeInput(isDark),
                               const SizedBox(height: 24),
 
-                              // ── 연결 버튼 ──
                               _buildConnectButton(),
                               const SizedBox(height: 32),
 
-                              // ── 솔로 모드 ──
+                              // ── 보조 액션 (솔로 모드) ──
                               TextButton(
                                 onPressed: _isLoading ? null : _startSolo,
                                 style: TextButton.styleFrom(
@@ -395,6 +413,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                         ),
                       ),
               ),
+              // 하단 배너 광고 영역
               const AdBannerWidget(),
             ],
           ),
@@ -403,7 +422,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     );
   }
 
-  // ── 초대 코드 생성 버튼 ──
+  /// 초대 코드 생성 버튼 빌더
   Widget _buildGenerateButton() {
     return Container(
       decoration: BoxDecoration(
@@ -430,7 +449,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     );
   }
 
-  // ── 생성된 초대 코드 카드 ──
+  /// 생성된 초대 코드를 크고 아름답게 보여주는 카드 위젯 빌더
   Widget _buildInviteCodeCard(bool isDark) {
     return Container(
       width: double.infinity,
@@ -448,11 +467,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
       ),
       child: Column(
         children: [
-          Row(
+          const Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.link, size: 16, color: AppTheme.textHint),
-              const SizedBox(width: 6),
+              SizedBox(width: 6),
               Text(
                 '상대방에게 이 코드를 알려주세요',
                 style: TextStyle(
@@ -467,7 +486,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const SizedBox(width: 48),
+              const SizedBox(width: 48), // 복사 아이콘과 중앙 정렬을 맞추기 위한 여백
               ShaderMask(
                 shaderCallback: (bounds) =>
                     AppTheme.primaryGradient.createShader(bounds),
@@ -481,13 +500,14 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                   ),
                 ),
               ),
+              // 복사 버튼
               Material(
                 color: Colors.transparent,
                 child: InkWell(
                   borderRadius: BorderRadius.circular(AppTheme.radiusS),
                   onTap: _copyCode,
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
+                  child: const Padding(
+                    padding: EdgeInsets.all(12),
                     child: Icon(Icons.copy_rounded,
                         size: 22, color: AppTheme.primary),
                   ),
@@ -500,7 +520,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     );
   }
 
-  // ── 코드 입력 필드 ──
+  /// 파트너 코드를 입력받는 텍스트 필드 빌더
   Widget _buildCodeInput(bool isDark) {
     return Container(
       decoration: BoxDecoration(
@@ -516,7 +536,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
           letterSpacing: 8,
           color: isDark ? AppTheme.darkTextPrimary : AppTheme.textPrimary,
         ),
-        decoration: InputDecoration(
+        decoration: const InputDecoration(
           hintText: '여기에 코드 입력',
           hintStyle: TextStyle(
             letterSpacing: 0,
@@ -525,17 +545,19 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
             color: AppTheme.textHint,
           ),
           prefixIcon: Padding(
-            padding: const EdgeInsets.only(left: 16),
+            padding: EdgeInsets.only(left: 16),
             child: Icon(Icons.tag, color: AppTheme.textHint, size: 20),
           ),
         ),
-        keyboardType: TextInputType.number,
-        maxLength: 6,
+        keyboardType: TextInputType.text,
+        inputFormatters: [
+          LengthLimitingTextInputFormatter(8), // 8자리 제한
+        ],
       ),
     );
   }
 
-  // ── 연결 시작 버튼 ──
+  /// 최종 연결 실행 버튼 빌더
   Widget _buildConnectButton() {
     return Container(
       decoration: BoxDecoration(

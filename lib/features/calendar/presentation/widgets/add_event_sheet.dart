@@ -2,9 +2,14 @@ import 'package:flutter/material.dart';
 import '../../../../core/models/event_model.dart';
 import '../../../../core/theme/app_theme.dart';
 
+/// 새로운 일정을 추가하기 위한 하단 모달 시트 위젯입니다.
+/// 제목, 설명, 포인트 색상을 입력받으며 부드러운 진입 애니메이션을 포함합니다.
 class AddEventSheet extends StatefulWidget {
+  /// 일정에 할당될 날짜
   final DateTime selectedDay;
+  /// 현재 커플의 고유 ID
   final String coupleId;
+  /// 작성이 완료되었을 때 호출될 콜백 함수
   final Function(EventModel) onSave;
 
   const AddEventSheet({
@@ -20,10 +25,15 @@ class AddEventSheet extends StatefulWidget {
 
 class _AddEventSheetState extends State<AddEventSheet>
     with SingleTickerProviderStateMixin {
+  /// 일정 제목 컨트롤러
   final _titleController = TextEditingController();
+  /// 일정 상세 설명 컨트롤러
   final _descController = TextEditingController();
+  /// 선택된 포인트 색상의 인덱스 (AppTheme.eventColors 기반)
   int _selectedColorIndex = 0;
 
+  // ── 애니메이션 설정 ──
+  /// 모달이 밑에서 위로 부드럽게 올라오는 애니메이션 컨트롤러
   late AnimationController _animController;
   late Animation<double> _slideAnimation;
 
@@ -74,6 +84,7 @@ class _AddEventSheetState extends State<AddEventSheet>
             ],
           ),
           padding: EdgeInsets.only(
+            // 키보드가 올라올 때 입력창이 가려지지 않도록 viewInsets.bottom 추가
             bottom: MediaQuery.of(context).viewInsets.bottom + 30,
             left: 28,
             right: 28,
@@ -83,7 +94,7 @@ class _AddEventSheetState extends State<AddEventSheet>
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 드래그 핸들
+              // ── 상단 드래그 핸들 (UI 데코레이션) ──
               Center(
                 child: Container(
                   width: 40,
@@ -96,7 +107,7 @@ class _AddEventSheetState extends State<AddEventSheet>
               ),
               const SizedBox(height: 20),
 
-              // 헤더
+              // ── 헤더 영역 (제목 및 닫기 버튼) ──
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -137,7 +148,7 @@ class _AddEventSheetState extends State<AddEventSheet>
               ),
               const SizedBox(height: 28),
 
-              // 제목 입력
+              // ── 제목 입력 필드 ──
               TextField(
                 controller: _titleController,
                 maxLength: 50,
@@ -159,11 +170,11 @@ class _AddEventSheetState extends State<AddEventSheet>
                       color: AppTheme.primary, size: 20),
                   counterStyle: TextStyle(color: AppTheme.textHint, fontSize: 11),
                 ),
-                autofocus: true,
+                autofocus: true, // 시트가 열리자마자 키보드 활성화
               ),
               const SizedBox(height: 18),
 
-              // 설명 입력
+              // ── 상세 설명 입력 필드 (선택 사항) ──
               TextField(
                 controller: _descController,
                 maxLength: 500,
@@ -184,7 +195,7 @@ class _AddEventSheetState extends State<AddEventSheet>
               ),
               const SizedBox(height: 28),
 
-              // 색상 선택
+              // ── 포인트 색상 선택 영역 ──
               Text(
                 '포인트 색상',
                 style: TextStyle(
@@ -227,9 +238,7 @@ class _AddEventSheetState extends State<AddEventSheet>
                               : null,
                           border: isSelected
                               ? Border.all(
-                                  color: isDark
-                                      ? Colors.white
-                                      : Colors.white,
+                                  color: Colors.white,
                                   width: 3)
                               : null,
                         ),
@@ -244,7 +253,7 @@ class _AddEventSheetState extends State<AddEventSheet>
               ),
               const SizedBox(height: 32),
 
-              // 저장 버튼
+              // ── 저장 및 반영 버튼 ──
               Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(AppTheme.radiusL),
@@ -259,15 +268,16 @@ class _AddEventSheetState extends State<AddEventSheet>
                 ),
                 child: ElevatedButton(
                   onPressed: () {
+                    // 데이터 정제: 양끝 공백 제거 및 보안을 위한 HTML 태그 제거
                     final title = _titleController.text.trim()
-                        .replaceAll(RegExp(r'<[^>]*>'), ''); // HTML 태그 제거
+                        .replaceAll(RegExp(r'<[^>]*>'), '');
                     final desc = _descController.text.trim()
                         .replaceAll(RegExp(r'<[^>]*>'), '');
 
                     if (title.isEmpty) return;
 
                     final event = EventModel(
-                      id: '',
+                      id: '', // 리포지토리에서 Firestore ID를 할당할 예정
                       coupleId: widget.coupleId,
                       title: title,
                       description: desc.isEmpty ? null : desc,
@@ -275,6 +285,8 @@ class _AddEventSheetState extends State<AddEventSheet>
                       colorIndex: _selectedColorIndex,
                       updatedAt: DateTime.now(),
                     );
+                    
+                    // 넘겨받은 콜백 실행 후 시트 닫기
                     widget.onSave(event);
                     Navigator.pop(context);
                   },

@@ -1,10 +1,16 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+/// 할 일(Todo) 데이터를 관리하는 모델 클래스입니다.
 class TodoModel {
+  /// 할 일의 고유 식별자 (Firestore 문서 ID)
   final String id;
+  /// 해당 할 일이 속한 커플의 고유 ID
   final String coupleId;
+  /// 할 일 내용 (예: "장보러 가기")
   final String task;
+  /// 완료 여부 (true: 완료, false: 미완료)
   final bool isDone;
+  /// 마지막으로 업데이트된 시간
   final DateTime updatedAt;
 
   TodoModel({
@@ -15,6 +21,8 @@ class TodoModel {
     required this.updatedAt,
   });
 
+  /// 이 모델 객체를 로컬 SQLite 저장을 위한 Map 형태로 변환합니다.
+  /// SQLite는 boolean 형식을 지원하지 않으므로 isDone을 1/0으로 변환합니다.
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -25,6 +33,7 @@ class TodoModel {
     };
   }
 
+  /// 특정 필드를 변경한 새로운 객체를 생성하여 반환합니다.
   TodoModel copyWith({
     String? id,
     String? coupleId,
@@ -41,6 +50,7 @@ class TodoModel {
     );
   }
 
+  /// SQLite 등에서 가져온 Map 데이터를 사용하여 TodoModel 객체를 생성합니다.
   factory TodoModel.fromMap(Map<String, dynamic> map) {
     return TodoModel(
       id: map['id'] as String,
@@ -51,6 +61,7 @@ class TodoModel {
     );
   }
 
+  /// Firestore의 [DocumentSnapshot]을 사용하여 TodoModel 객체를 생성합니다.
   factory TodoModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     return TodoModel(
@@ -62,6 +73,7 @@ class TodoModel {
     );
   }
 
+  /// 이 객체를 Firestore에 저장하기 위한 Map 형태로 변환합니다.
   Map<String, dynamic> toFirestore() {
     return {
       'couple_id': coupleId,

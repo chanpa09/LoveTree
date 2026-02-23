@@ -16,7 +16,9 @@ String _formatTime(DateTime date) {
   return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
 }
 
+/// 특정 일정의 상세 정보를 보여주고, 커플 간의 실시간 댓글(마이크로 채팅)을 지원하는 화면입니다.
 class EventDetailScreen extends ConsumerStatefulWidget {
+  /// 상세 내용을 표시할 대상 일정 모델
   final EventModel event;
   const EventDetailScreen({super.key, required this.event});
 
@@ -25,10 +27,14 @@ class EventDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
+  /// 댓글 입력을 위한 텍스트 컨트롤러
   final _commentController = TextEditingController();
   final _firestore = FirebaseFirestore.instance;
+  /// 채팅 리스트의 자동 스크롤을 제어하기 위한 스크롤 컨트롤러
   final _scrollController = ScrollController();
 
+  /// 새로운 댓글을 작성하여 Firestore에 업로드합니다.
+  /// 업로드 후에는 최신 메시지가 보이도록 자동으로 스크롤을 하단으로 이동시킵니다.
   void _addComment() async {
     if (_commentController.text.isEmpty) return;
 
@@ -36,13 +42,14 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
     if (user == null) return;
 
     final comment = CommentModel(
-      id: '',
+      id: '', // Firestore 자동 생성을 위해 빈 값 전달
       eventId: widget.event.id,
       authorId: user.uid,
       content: _commentController.text,
       createdAt: DateTime.now(),
     );
 
+    // [Step 1] Firestore의 하위 컬렉션 'comments'에 새 댓글 추가
     await _firestore
         .collection('events')
         .doc(widget.event.id)
@@ -51,7 +58,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
 
     _commentController.clear();
 
-    // 새 메시지 후 스크롤 하단으로 이동
+    // [Step 2] 새 메시지 작성 후 부드럽게 스크롤 하단으로 이동
     Future.delayed(const Duration(milliseconds: 300), () {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -85,7 +92,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
       ),
       body: Column(
         children: [
-          // ── 이벤트 정보 헤더 카드 ──
+          // ── 상단: 이벤트 정보 요약 헤더 카드 ──
           Container(
             margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             padding: const EdgeInsets.all(20),
@@ -106,6 +113,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
             ),
             child: Row(
               children: [
+                // 일정 색상 아이콘
                 Container(
                   width: 48,
                   height: 48,
@@ -162,7 +170,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
             ),
           ),
 
-          // ── 섹션 헤더 ──
+          // ── 중간 섹션: 실시간 댓글 영역 제목 ──
           Padding(
             padding:
                 const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -191,18 +199,18 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
             ),
           ),
 
-          // ── 댓글 / 채팅 영역 ──
+          // ── 하단: 실시간 업데이트되는 댓글 리스트 (StreamBuilder) ──
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: _firestore
                   .collection('events')
                   .doc(widget.event.id)
                   .collection('comments')
-                  .orderBy('created_at', descending: false)
+                  .orderBy('created_at', descending: false) // 과거 메시지가 위로
                   .snapshots(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
-                  return Center(
+                  return const Center(
                     child: CircularProgressIndicator(
                       strokeWidth: 3,
                       color: AppTheme.primary,
@@ -214,6 +222,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                     .map((doc) => CommentModel.fromFirestore(doc))
                     .toList();
 
+                // 댓글이 하나도 없는 경우 안내 위젯 표시
                 if (comments.isEmpty) {
                   return Center(
                     child: Column(
@@ -225,7 +234,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                           color: AppTheme.textHint.withOpacity(0.3),
                         ),
                         const SizedBox(height: 12),
-                        Text(
+                        const Text(
                           '첫 댓글을 남겨보세요! 💬',
                           style: TextStyle(
                             color: AppTheme.textHint,
@@ -246,6 +255,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                   );
                 }
 
+                // 채팅 형식의 리스트 빌더
                 return ListView.builder(
                   controller: _scrollController,
                   padding:
@@ -267,14 +277,14 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
             ),
           ),
 
-          // ── 메시지 입력창 ──
+          // ── 최하단: 메시지 입력창 ──
           _buildMessageInput(isDark),
         ],
       ),
     );
   }
 
-  // ── 채팅 버블 위젯 ──
+  /// 나(Right)와 상대방(Left)을 구분하여 보여주는 말풍선 위젯을 생성합니다.
   Widget _buildChatBubble(
       CommentModel comment, bool isMe, bool isDark) {
     return Align(
@@ -350,7 +360,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
     );
   }
 
-  // ── 메시지 입력 영역 ──
+  /// 메시지 입력창 영역 위젯 빌더
   Widget _buildMessageInput(bool isDark) {
     return Container(
       padding: EdgeInsets.only(
@@ -382,7 +392,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
               ),
               child: TextField(
                 controller: _commentController,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   hintText: '메시지를 입력하세요...',
                   hintStyle: TextStyle(
                     color: AppTheme.textHint,
@@ -391,7 +401,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                   border: InputBorder.none,
                   enabledBorder: InputBorder.none,
                   focusedBorder: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
+                  contentPadding: EdgeInsets.symmetric(
                       horizontal: 20, vertical: 12),
                 ),
                 onSubmitted: (_) => _addComment(),
@@ -399,6 +409,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
             ),
           ),
           const SizedBox(width: 8),
+          // 전송 버튼
           Container(
             decoration: BoxDecoration(
               gradient: AppTheme.primaryGradient,
@@ -422,6 +433,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
     );
   }
 
+  /// 인덱스에 따른 브랜드 컬러 팔레트를 반환합니다.
   Color _getColor(int index) {
     return AppTheme.eventColors[index % AppTheme.eventColors.length];
   }

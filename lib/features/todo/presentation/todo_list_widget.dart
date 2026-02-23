@@ -4,9 +4,14 @@ import '../../../core/models/todo_model.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/todo_repository.dart';
 
+/// 커플이 함께 관리하는 공동 할 일 목록을 보여주는 위젯입니다.
+/// 가로 스크롤 형태의 리스트를 제공하며, 상태 토글, 추가, 삭제 기능을 포함합니다.
 class TodoListWidget extends ConsumerStatefulWidget {
+  /// 현재 사용자가 속한 커플의 고유 ID
   final String coupleId;
+  /// 위젯의 전체 높이 (지정하지 않으면 기본값 사용)
   final double? height;
+  /// 헤더(제목 및 추가 버튼) 표시 여부
   final bool showHeader;
   const TodoListWidget({
     super.key,
@@ -20,13 +25,16 @@ class TodoListWidget extends ConsumerStatefulWidget {
 }
 
 class _TodoListWidgetState extends ConsumerState<TodoListWidget> {
+  /// 할 일 입력을 위한 컨트롤러
   final _todoController = TextEditingController();
+  /// 현재 화면에 표시되는 필터링된 할 일 리스트
   List<TodoModel> _todos = [];
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
+    // 위젯 초기화 시 데이터를 불러옵니다.
     _refreshTodos();
   }
 
@@ -36,34 +44,45 @@ class _TodoListWidgetState extends ConsumerState<TodoListWidget> {
     super.dispose();
   }
 
+  /// 로컬 데이터를 즉시 노출하고, 서버와 비동기 동기화를 수행하여 데이터를 갱신합니다.
   Future<void> _refreshTodos() async {
     final repo = ref.read(todoRepositoryProvider);
+    
+    // 1. 로컬 캐시/DB 데이터를 먼저 화면에 뿌려줌 (빠른 응답성)
     final localTodos = await repo.getLocalTodos(widget.coupleId);
     if (mounted) {
       setState(() => _todos = localTodos);
     }
 
-    // 백그라운드 동기화 후 화면만 조용히 갱신
+    // 2. 서버와 백그라운드 동기화 진행 (사용자 모르게 최신화)
     repo.syncTodos(widget.coupleId).then((_) async {
       final syncedTodos = await repo.getLocalTodos(widget.coupleId);
       if (mounted) {
         setState(() => _todos = syncedTodos);
       }
-    }).catchError((_) {});
+    }).catchError((_) {
+      // 동기화 실패 시에도 로컬 데이터는 유지되므로 별도의 에러 처리 생략
+    });
   }
 
+  /// 새로운 할 일을 추가합니다.
   void _addTodo() async {
     final text = _todoController.text.trim()
-        .replaceAll(RegExp(r'<[^>]*>'), ''); // HTML 태그 제거
+        .replaceAll(RegExp(r'<[^>]*>'), ''); // 보안: 불필요한 HTML 태그 제거
+    
+    // 빈 값이거나 너무 긴 경우 무시
     if (text.isEmpty || text.length > 100) return;
 
     _todoController.clear();
 
     final repo = ref.read(todoRepositoryProvider);
+    // [Step 1] 리포지토리에 추가 요청 (낙관적 업데이트 실행됨)
     await repo.addTodo(widget.coupleId, text);
+    // [Step 2] 로컬 상태 갱신
     await _refreshTodos();
   }
 
+  /// 특정 할 일을 삭제합니다.
   void _deleteTodo(TodoModel todo) async {
     final repo = ref.read(todoRepositoryProvider);
     await repo.deleteTodo(todo);
@@ -75,6 +94,7 @@ class _TodoListWidgetState extends ConsumerState<TodoListWidget> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final screenWidth = MediaQuery.of(context).size.width;
     final listHeight = widget.height ?? 115.0;
+    // 화면 너비에 따라 카드 너비를 유동적으로 계산
     final cardWidth = (screenWidth * 0.38).clamp(140.0, 200.0);
 
     return Container(
@@ -82,7 +102,7 @@ class _TodoListWidgetState extends ConsumerState<TodoListWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 헤더 (showHeader가 true일 때만 전체 표시)
+          // ── 헤더 영역 (제목 & 빠른 추가 아이콘) ──
           if (widget.showHeader)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -133,6 +153,7 @@ class _TodoListWidgetState extends ConsumerState<TodoListWidget> {
               ),
             )
           else
+            // showHeader가 false일 때도 추가 버튼은 우상단에 작게 노출
             Align(
               alignment: Alignment.centerRight,
               child: Padding(
@@ -158,138 +179,18 @@ class _TodoListWidgetState extends ConsumerState<TodoListWidget> {
             ),
           const SizedBox(height: 14),
 
-          // 투두 리스트
+          // ── 할 일 목록 영역 (가로 스크롤) ──
           SizedBox(
             height: listHeight,
             child: _todos.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.checklist_rounded,
-                          size: 32,
-                          color: AppTheme.textHint.withOpacity(0.3),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '오늘 할 일을 추가해보세요 ✍️',
-                          style: TextStyle(
-                            color: AppTheme.textHint,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
+                ? _buildEmptyView()
                 : ListView.builder(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     itemCount: _todos.length,
                     itemBuilder: (context, index) {
                       final todo = _todos[index];
-                      return GestureDetector(
-                        onLongPress: () => _showDeleteDialog(todo),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          width: cardWidth,
-                          margin: const EdgeInsets.only(right: 12, bottom: 4),
-                          decoration: BoxDecoration(
-                            color: todo.isDone
-                                ? (isDark
-                                    ? AppTheme.darkSurfaceVariant
-                                    : const Color(0xFFF8F9FA))
-                                : (isDark
-                                    ? AppTheme.darkCard
-                                    : Colors.white),
-                            borderRadius:
-                                BorderRadius.circular(AppTheme.radiusM),
-                            boxShadow: todo.isDone
-                                ? null
-                                : (isDark ? null : AppTheme.cardShadow),
-                            border: todo.isDone
-                                ? Border.all(
-                                    color: isDark
-                                        ? Colors.white10
-                                        : Colors.grey.shade200,
-                                    width: 1.5)
-                                : Border.all(
-                                    color: isDark
-                                        ? Colors.white10
-                                        : AppTheme.primary.withOpacity(0.1),
-                                    width: 1.5),
-                          ),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              borderRadius:
-                                  BorderRadius.circular(AppTheme.radiusM),
-                              onTap: () async {
-                                await ref
-                                    .read(todoRepositoryProvider)
-                                    .toggleTodo(todo);
-                                _refreshTodos();
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      todo.task,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        decoration: todo.isDone
-                                            ? TextDecoration.lineThrough
-                                            : null,
-                                        decorationColor: AppTheme.textHint,
-                                        color: todo.isDone
-                                            ? AppTheme.textHint
-                                            : (isDark
-                                                ? AppTheme.darkTextPrimary
-                                                : AppTheme.textPrimary),
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 15,
-                                        height: 1.3,
-                                      ),
-                                    ),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.end,
-                                      children: [
-                                        AnimatedSwitcher(
-                                          duration: const Duration(
-                                              milliseconds: 300),
-                                          transitionBuilder:
-                                              (child, anim) {
-                                            return ScaleTransition(
-                                                scale: anim, child: child);
-                                          },
-                                          child: Icon(
-                                            todo.isDone
-                                                ? Icons
-                                                    .check_circle_rounded
-                                                : Icons.circle_outlined,
-                                            key: ValueKey(todo.isDone),
-                                            color: todo.isDone
-                                                ? AppTheme.mint
-                                                : AppTheme.accent,
-                                            size: 26,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
+                      return _buildTodoCard(todo, cardWidth, isDark);
                     },
                   ),
           ),
@@ -298,7 +199,139 @@ class _TodoListWidgetState extends ConsumerState<TodoListWidget> {
     );
   }
 
-  // 할 일 추가 바텀시트
+  /// 할 일이 없을 때 보여주는 빈 화면 위젯
+  Widget _buildEmptyView() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.checklist_rounded,
+            size: 32,
+            color: AppTheme.textHint.withOpacity(0.3),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            '오늘 할 일을 추가해보세요 ✍️',
+            style: TextStyle(
+              color: AppTheme.textHint,
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 개별 할 일 카드 위젯 빌더
+  Widget _buildTodoCard(TodoModel todo, double cardWidth, bool isDark) {
+    return GestureDetector(
+      onLongPress: () => _showDeleteDialog(todo), // 꾹 눌러서 삭제
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        width: cardWidth,
+        margin: const EdgeInsets.only(right: 12, bottom: 4),
+        decoration: BoxDecoration(
+          color: todo.isDone
+              ? (isDark
+                  ? AppTheme.darkSurfaceVariant
+                  : const Color(0xFFF8F9FA))
+              : (isDark
+                  ? AppTheme.darkCard
+                  : Colors.white),
+          borderRadius:
+              BorderRadius.circular(AppTheme.radiusM),
+          boxShadow: todo.isDone
+              ? null
+              : (isDark ? null : AppTheme.cardShadow),
+          border: todo.isDone
+              ? Border.all(
+                  color: isDark
+                      ? Colors.white10
+                      : Colors.grey.shade200,
+                  width: 1.5)
+              : Border.all(
+                  color: isDark
+                      ? Colors.white10
+                      : AppTheme.primary.withOpacity(0.1),
+                  width: 1.5),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius:
+                BorderRadius.circular(AppTheme.radiusM),
+            onTap: () async {
+              // 상태 토글: 체크박스 클릭과 동일한 효과
+              await ref
+                  .read(todoRepositoryProvider)
+                  .toggleTodo(todo);
+              _refreshTodos();
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
+                mainAxisAlignment:
+                    MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    todo.task,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      decoration: todo.isDone
+                          ? TextDecoration.lineThrough
+                          : null,
+                      decorationColor: AppTheme.textHint,
+                      color: todo.isDone
+                          ? AppTheme.textHint
+                          : (isDark
+                              ? AppTheme.darkTextPrimary
+                              : AppTheme.textPrimary),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      height: 1.3,
+                    ),
+                  ),
+                  Row(
+                    mainAxisAlignment:
+                        MainAxisAlignment.end,
+                    children: [
+                      // 체크 상태 변화 시 부드러운 스케일 애니메이션 적용
+                      AnimatedSwitcher(
+                        duration: const Duration(
+                            milliseconds: 300),
+                        transitionBuilder:
+                            (child, anim) {
+                          return ScaleTransition(
+                              scale: anim, child: child);
+                        },
+                        child: Icon(
+                          todo.isDone
+                              ? Icons
+                                  .check_circle_rounded
+                              : Icons.circle_outlined,
+                          key: ValueKey(todo.isDone),
+                          color: todo.isDone
+                              ? AppTheme.mint
+                              : AppTheme.accent,
+                          size: 26,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 할 일을 새로 작성하기 위한 바텀시트를 노출합니다.
   void _showAddTodoSheet() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -356,7 +389,7 @@ class _TodoListWidgetState extends ConsumerState<TodoListWidget> {
             const SizedBox(height: 20),
             TextField(
               controller: _todoController,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 hintText: '예: 기저귀 구매, 관리비 납부',
                 hintStyle: TextStyle(color: AppTheme.textHint),
                 prefixIcon: Icon(Icons.edit_rounded,
@@ -409,7 +442,7 @@ class _TodoListWidgetState extends ConsumerState<TodoListWidget> {
     );
   }
 
-  // 삭제 확인 다이얼로그
+  /// 할 일 삭제 여부를 확인하는 다이얼로그를 보여줍니다.
   void _showDeleteDialog(TodoModel todo) {
     showDialog(
       context: context,
@@ -422,7 +455,7 @@ class _TodoListWidgetState extends ConsumerState<TodoListWidget> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('취소',
+            child: const Text('취소',
                 style: TextStyle(color: AppTheme.textHint)),
           ),
           TextButton(
